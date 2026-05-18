@@ -20,7 +20,7 @@ BlynkTimer timer;
 unsigned long bootTime;
 unsigned long lastCommandTime = 0;
 const unsigned long commandCooldown = 15000;   // 15 seconds
-const unsigned long sensorIntervalSeconds = 3; // default 3 seconds
+const unsigned long sensorIntervalSeconds = 45; // default 45 seconds
 
 // Returns true when the sensor reports the door is open.
 // Hardware mapping: sensor == 1 -> OPEN, sensor == 0 -> CLOSED
