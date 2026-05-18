@@ -1,5 +1,6 @@
 #include "../.env"
 #define BLYNK_PRINT Serial
+#define BLYNK_FIRMWARE_VERSION "0.1.0"
 
 #include <WiFi.h>
 #include <WiFiClient.h>
@@ -19,8 +20,8 @@ enum DoorState
 BlynkTimer timer;
 unsigned long bootTime;
 unsigned long lastCommandTime = 0;
-const unsigned long commandCooldown = 15000;   // 15 seconds
-const unsigned long sensorIntervalSeconds = 45; // default 45 seconds
+const unsigned long commandCooldown = 15000;    // 15 seconds
+const unsigned long sensorIntervalSeconds = 10; // default 45 seconds
 
 // Returns true when the sensor reports the door is open.
 // Hardware mapping: sensor == 1 -> OPEN, sensor == 0 -> CLOSED
@@ -132,6 +133,9 @@ BLYNK_CONNECTED() {}
 
 void myTimerEvent()
 {
+  static bool hasLastReportedDoorOpen = false;
+  static bool lastReportedDoorOpen = false;
+
   // During cooldown show transitional state
   if (millis() - lastCommandTime < commandCooldown)
   {
@@ -139,13 +143,13 @@ void myTimerEvent()
   }
 
   // Otherwise show actual sensor state
-  if (isDoorOpen())
+  bool doorOpen = isDoorOpen();
+
+  if (!hasLastReportedDoorOpen || doorOpen != lastReportedDoorOpen)
   {
-    writeDoorState(OPEN);
-  }
-  else
-  {
-    writeDoorState(CLOSED);
+    writeDoorState(doorOpen ? OPEN : CLOSED);
+    lastReportedDoorOpen = doorOpen;
+    hasLastReportedDoorOpen = true;
   }
 }
 
