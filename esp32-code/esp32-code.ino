@@ -35,6 +35,7 @@ void writeDoorState(DoorState state)
   switch (state)
   {
   case OPEN:
+    Blynk.logEvent("door_open");
     Blynk.virtualWrite(V3, "OPEN");
     break;
   case OPENING:
