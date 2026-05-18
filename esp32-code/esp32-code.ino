@@ -3,7 +3,7 @@
 
 #include <WiFi.h>
 #include <WiFiClient.h>
-#include <BlynkSimpleEsp32.h>
+#include <BlynkSimpleEsp32_SSL.h>
 
 const int sensor = 13;     // GPIO Pin number on which door sensor is connected
 const int door_relay = 18; // GPIO pin number for relay
