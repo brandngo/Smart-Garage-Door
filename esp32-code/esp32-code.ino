@@ -20,8 +20,12 @@ enum DoorState
 BlynkTimer timer;
 unsigned long bootTime;
 unsigned long lastCommandTime = 0;
+unsigned long lastBlynkConnectAttempt = 0;
+unsigned long firstBlynkConnectAttempt = 0;
 const unsigned long commandCooldown = 15000;    // 15 seconds
 const unsigned long sensorIntervalSeconds = 10; // default 45 seconds
+const unsigned long blynkReconnectInterval = 5000;
+const unsigned long blynkReconnectTimeout = 5UL * 60UL * 1000UL;
 
 // Returns true when the sensor reports the door is open.
 // Hardware mapping: sensor == 1 -> OPEN, sensor == 0 -> CLOSED
@@ -129,7 +133,11 @@ BLYNK_WRITE(V1)
   }
 }
 
-BLYNK_CONNECTED() {}
+BLYNK_CONNECTED()
+{
+  Serial.println("Blynk connected - sending current sensor state");
+  writeDoorState(isDoorOpen() ? OPEN : CLOSED);
+}
 
 void myTimerEvent()
 {
@@ -153,6 +161,54 @@ void myTimerEvent()
   }
 }
 
+void ensureBlynkConnection()
+{
+  unsigned long now = millis();
+
+  if (firstBlynkConnectAttempt == 0)
+  {
+    firstBlynkConnectAttempt = now;
+    lastBlynkConnectAttempt = 0;
+  }
+
+  if (Blynk.connected())
+  {
+    firstBlynkConnectAttempt = 0;
+    lastBlynkConnectAttempt = 0;
+    return;
+  }
+
+  if (now - firstBlynkConnectAttempt >= blynkReconnectTimeout)
+  {
+    Serial.println("Blynk connection timed out - restarting ESP");
+    delay(100);
+    ESP.restart();
+  }
+
+  if (lastBlynkConnectAttempt != 0 && now - lastBlynkConnectAttempt < blynkReconnectInterval)
+  {
+    return;
+  }
+
+  lastBlynkConnectAttempt = now;
+
+  if (WiFi.status() != WL_CONNECTED)
+  {
+    Serial.println("WiFi not connected - retrying WiFi");
+    WiFi.begin(ssid, pass);
+    return;
+  }
+
+  Serial.println("Attempting to connect to Blynk...");
+
+  if (Blynk.connect(1000))
+  {
+    Serial.println("Blynk connection established");
+    firstBlynkConnectAttempt = 0;
+    lastBlynkConnectAttempt = 0;
+  }
+}
+
 void setup()
 {
   Serial.begin(115200);
@@ -164,13 +220,16 @@ void setup()
 
   pinMode(sensor, INPUT_PULLUP);
 
-  Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, pass);
+  Blynk.config(BLYNK_AUTH_TOKEN);
 
   timer.setInterval(sensorIntervalSeconds * 1000UL, myTimerEvent);
 }
 
 void loop()
 {
+  ensureBlynkConnection();
   Blynk.run();
   timer.run();
 }
